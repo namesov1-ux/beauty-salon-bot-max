@@ -1,1 +1,1 @@
-web: python mah_bot.py
+web: python max_bot.py
