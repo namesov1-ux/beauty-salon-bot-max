@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 import json
 import os
-import sys
 from config import config
 
 class GoogleSheetsManager:
@@ -15,77 +14,24 @@ class GoogleSheetsManager:
             'https://www.googleapis.com/auth/drive'
         ]
         
-        # ДИАГНОСТИКА: Проверяем все переменные окружения
-        print("=" * 60)
-        print("🔍 ДИАГНОСТИКА ПЕРЕМЕННЫХ ОКРУЖЕНИЯ")
-        print("=" * 60)
-        
-        # Проверяем конкретно GOOGLE_CREDENTIALS_JSON
+        # Загрузка credentials из переменной окружения
         creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON')
-        
-        print(f"1. Переменная GOOGLE_CREDENTIALS_JSON: {'✅ НАЙДЕНА' if creds_json else '❌ НЕ НАЙДЕНА'}")
-        
-        if creds_json:
-            print(f"2. Тип переменной: {type(creds_json)}")
-            print(f"3. Длина JSON: {len(creds_json)} символов")
-            print(f"4. Первые 100 символов: {creds_json[:100]}")
-            print(f"5. Последние 100 символов: {creds_json[-100:]}")
-            
-            # Проверяем, является ли строка валидным JSON
-            try:
-                parsed = json.loads(creds_json)
-                print("6. ✅ JSON успешно парсится")
-                print(f"7. Ключи в JSON: {list(parsed.keys())}")
-                
-                # Проверяем обязательные поля
-                required_fields = ['type', 'project_id', 'private_key', 'client_email']
-                missing_fields = [f for f in required_fields if f not in parsed]
-                if missing_fields:
-                    print(f"8. ❌ Отсутствуют поля: {missing_fields}")
-                else:
-                    print("8. ✅ Все обязательные поля присутствуют")
-                    
-            except json.JSONDecodeError as e:
-                print(f"6. ❌ Ошибка парсинга JSON: {e}")
-                print(f"7. Проблемный участок: {str(e)}")
-        else:
-            print("❌ Переменная GOOGLE_CREDENTIALS_JSON не найдена!")
-            print("Проверьте имя переменной в Railway - должно быть точно GOOGLE_CREDENTIALS_JSON")
-            print("Доступные переменные окружения:")
-            for key in os.environ.keys():
-                if 'GOOGLE' in key or 'CRED' in key:
-                    print(f"  - {key}")
-        
-        print("=" * 60)
-        
         if not creds_json:
             raise ValueError("❌ GOOGLE_CREDENTIALS_JSON не найдена в переменных окружения!")
         
         try:
-            print("🔄 Парсим JSON...")
             creds_dict = json.loads(creds_json)
-            print("🔄 Создаем credentials...")
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
             print("✅ Загружены credentials из переменной окружения GOOGLE_CREDENTIALS_JSON")
-        except json.JSONDecodeError as e:
-            print(f"❌ Ошибка парсинга JSON: {e}")
-            print("Проверьте, что JSON передан одной строкой без лишних кавычек")
-            raise
         except Exception as e:
             print(f"❌ Ошибка загрузки credentials: {e}")
             raise
         
-        print("🔄 Авторизация в Google Sheets...")
         self.client = gspread.authorize(creds)
-        
-        print(f"🔄 Открываем таблицу по URL: {config.GOOGLE_SHEETS_URL[:50]}...")
         self.sheet = self.client.open_by_url(config.GOOGLE_SHEETS_URL)
         
         # Получаем существующие листы
-        print("🔄 Получаем лист masters...")
         self.masters_sheet = self.sheet.worksheet("masters")
-        
-        print("🔄 Получаем лист schedule...")
         self.schedule_sheet = self.sheet.worksheet("schedule")
         
         # Инициализируем структуру, если нужно
@@ -221,20 +167,6 @@ class GoogleSheetsManager:
             return {}
         except Exception as e:
             print(f"Error getting master by name: {e}")
-            return {}
-    
-    def get_master_by_id(self, master_id: str) -> Dict:
-        """
-        Получение мастера по ID
-        """
-        try:
-            masters = self.get_masters_list()
-            for master in masters:
-                if str(master.get('id', '')).lower() == str(master_id).lower():
-                    return master
-            return {}
-        except Exception as e:
-            print(f"Error getting master by id: {e}")
             return {}
     
     def check_slot_available(self, date: str, master: str, time: str) -> bool:
@@ -382,5 +314,4 @@ class GoogleSheetsManager:
             return False
 
 # Глобальный экземпляр менеджера
-print("🔄 Создание глобального экземпляра GoogleSheetsManager...")
 sheets_manager = GoogleSheetsManager()
